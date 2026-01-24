@@ -1,26 +1,6 @@
-import {
-  createContext,
-  useEffect,
-  useState,
-  useCallback,
-  type ReactNode,
-} from 'react';
-import type { User, Session, AuthError } from '@supabase/supabase-js';
+import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import { supabase } from '../supabase-client';
-
-interface AuthState {
-  user: User | null;
-  session: Session | null;
-  isLoading: boolean;
-}
-
-export interface AuthContextType extends AuthState {
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signOut: () => Promise<{ error: AuthError | null }>;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext, type AuthState } from './auth-context';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -34,7 +14,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   });
 
   useEffect(() => {
-    // Get initial session
     const initializeAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -47,7 +26,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     initializeAuth();
 
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setAuthState({
@@ -84,15 +62,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return { error };
   }, []);
 
-  const value: AuthContextType = {
-    ...authState,
-    signIn,
-    signUp,
-    signOut,
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        ...authState,
+        signIn,
+        signUp,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

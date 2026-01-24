@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { supabase } from "../supabase-client";
 import {
   getSalesDeals,
   getTotalSalesValueByName,
@@ -10,46 +11,76 @@ export function SalesDeals() {
   const [metrics, setMetrics] = useState<
     { name: string | null; total_value: number }[]
   >([]);
+  // On ajoute un état pour savoir si une synchro est en cours (pour l'UX, optionnel)
+  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadAllData() {
-      setLoading(true);
-      setError(null);
+  // 1. Définition stable de la fonction de chargement (useCallback)
+  // Cette fonction est notre SEULE façon de mettre à jour l'état.
+  const fetchLatestData = useCallback(async (isBackgroundRefresh = false) => {
+    if (!isBackgroundRefresh) setLoading(true);
+    else setIsSyncing(true);
 
-      try {
-        const [dealsResponse, metricsResponse] = await Promise.all([
-          getSalesDeals(),
-          getTotalSalesValueByName(),
-        ]);
+    setError(null);
 
-        if (dealsResponse.error) {
-          setError(dealsResponse.error);
-        } else {
-          setDeals(dealsResponse.data ?? []);
-        }
+    try {
+      const [dealsResponse, metricsResponse] = await Promise.all([
+        getSalesDeals(),
+        getTotalSalesValueByName(),
+      ]);
 
-        if (metricsResponse.error) {
-          setError((prev) => prev || metricsResponse.error);
-        } else {
-          setMetrics(metricsResponse.data ?? []);
-        }
-      } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("An unexpected error occurred");
-        }
-      } finally {
-        setLoading(false);
+      if (dealsResponse.error) throw new Error(dealsResponse.error);
+      if (metricsResponse.error) throw new Error(metricsResponse.error);
+
+      setDeals(dealsResponse.data ?? []);
+      setMetrics(metricsResponse.data ?? []);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Impossible de rafraîchir les données");
       }
+    } finally {
+      setLoading(false);
+      setIsSyncing(false);
     }
-
-    loadAllData();
   }, []);
 
-  if (loading) {
+  // 2. Chargement initial
+  useEffect(() => {
+    fetchLatestData();
+  }, [fetchLatestData]);
+
+  // 3. Abonnement Realtime "Signal"
+  useEffect(() => {
+    const channel = supabase
+      .channel("sales-dashboard-sync")
+      .on(
+        "postgres_changes",
+        {
+          event: "*", // On écoute TOUT : INSERT, UPDATE, DELETE
+          schema: "public",
+          table: "sales_deals",
+        },
+        () => {
+          // LE COEUR DU PATTERN :
+          // On ignore le payload (ce qui a changé).
+          // On utilise l'événement comme un simple "Signal" pour recharger la Source de Vérité.
+          console.log(
+            "⚡ Signal Realtime reçu : Invalidation et rechargement des données...",
+          );
+          fetchLatestData(true); // true = refresh silencieux (pas de spinner global)
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchLatestData]);
+
+  if (loading && !isSyncing && deals.length === 0) {
     return (
       <div className="flex justify-center items-center p-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -60,28 +91,57 @@ export function SalesDeals() {
   if (error) {
     return (
       <div className="max-w-2xl mx-auto bg-red-50 border border-red-200 rounded-lg p-4 m-4">
-        <h3 className="text-red-800 font-semibold">Error</h3>
+        <h3 className="text-red-800 font-semibold">
+          Erreur de synchronisation
+        </h3>
         <p className="text-red-600">{error}</p>
+        <button
+          onClick={() => fetchLatestData()}
+          className="mt-2 text-sm text-red-700 underline hover:text-red-900"
+        >
+          Réessayer
+        </button>
       </div>
     );
   }
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-8">
+      {/* Header avec indicateur de statut */}
+      <div className="flex justify-between items-end">
+        <h2 className="text-2xl font-bold text-gray-800">Tableau de Bord</h2>
+        <div className="text-sm">
+          {isSyncing ? (
+            <span className="text-blue-600 flex items-center gap-2">
+              <span className="animate-spin h-3 w-3 border-2 border-blue-600 border-t-transparent rounded-full"></span>
+              Mise à jour...
+            </span>
+          ) : (
+            <span className="text-green-600 flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+              </span>
+              En direct
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Metrics View */}
       <section>
-        <h2 className="text-xl font-bold text-gray-800 mb-4">
-          Performance Metrics
-        </h2>
+        <h3 className="text-xl font-bold text-gray-700 mb-4">Performance</h3>
         {metrics.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {metrics.map((metric, index) => (
               <div
                 key={`${metric.name}-${index}`}
-                className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+                className={`bg-white p-6 rounded-lg shadow-sm border transition-all duration-300 ${
+                  isSyncing ? "border-blue-200 bg-blue-50" : "border-gray-100"
+                }`}
               >
                 <h3 className="text-gray-500 text-sm font-medium uppercase tracking-wide">
-                  {metric.name || "Unknown"}
+                  {metric.name || "Inconnu"}
                 </h3>
                 <p className="mt-2 text-3xl font-bold text-gray-900">
                   ${(metric.total_value ?? 0).toLocaleString()}
@@ -90,23 +150,27 @@ export function SalesDeals() {
             ))}
           </div>
         ) : (
-          <p className="text-gray-500 italic">No metrics available.</p>
+          <p className="text-gray-500 italic">Aucune donnée métrique.</p>
         )}
       </section>
 
       {/* Deals Table */}
       <section>
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Deals</h2>
-        <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+        <h3 className="text-xl font-bold text-gray-700 mb-4">
+          Dernières Ventes
+        </h3>
+        <div
+          className={`bg-white shadow-sm rounded-lg border overflow-hidden transition-colors duration-300 ${isSyncing ? "border-blue-200" : "border-gray-200"}`}
+        >
           {deals.length > 0 ? (
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Deal Name
+                    Nom du Deal
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Value
+                    Valeur
                   </th>
                 </tr>
               </thead>
@@ -130,7 +194,7 @@ export function SalesDeals() {
             </table>
           ) : (
             <div className="p-8 text-center text-gray-500">
-              No sales deals found.
+              Aucune vente trouvée.
             </div>
           )}
         </div>

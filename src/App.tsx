@@ -3,7 +3,7 @@ import { SalesDeals } from './components/SalesDeals';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SignIn } from './pages/SignIn';
 import { SignUp } from './pages/SignUp';
-import { useAuth } from './context/AuthContext';
+import { useAuth } from './hooks/useAuth';
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();

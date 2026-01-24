@@ -8,7 +8,7 @@ import {
 } from "../api/api";
 import { Dialog } from "./Dialog";
 import { AddDealForm } from "./AddDealForm";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 
 export function SalesDeals() {
   const { user, signOut } = useAuth();

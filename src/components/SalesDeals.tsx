@@ -4,17 +4,17 @@ import { supabase } from "../supabase-client";
 import {
   getSalesDeals,
   getTotalSalesValueByName,
-  type SalesDealResult,
+  type SalesDealWithUser,
 } from "../api/api";
 import { Dialog } from "./Dialog";
 import { AddDealForm } from "./AddDealForm";
 import { useAuth } from "../hooks/useAuth";
 
 export function SalesDeals() {
-  const { user, signOut } = useAuth();
+  const { user, userProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [deals, setDeals] = useState<SalesDealResult[]>([]);
+  const [deals, setDeals] = useState<SalesDealWithUser[]>([]);
   const [metrics, setMetrics] = useState<
     { name: string | null; total_value: number }[]
   >([]);
@@ -148,8 +148,12 @@ export function SalesDeals() {
             </svg>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-900">{user?.email}</p>
-            <p className="text-xs text-gray-500">Connecté</p>
+            <p className="text-sm font-medium text-gray-900">
+              {userProfile?.name ?? user?.email}
+            </p>
+            <p className="text-xs text-gray-500">
+              {userProfile ? `${userProfile.account_type} • ${user?.email}` : 'Connecté'}
+            </p>
           </div>
         </div>
         <button
@@ -286,6 +290,9 @@ export function SalesDeals() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Nom du Deal
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Créé par
+                  </th>
                   <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Valeur
                   </th>
@@ -299,6 +306,9 @@ export function SalesDeals() {
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {deal.name ?? "N/A"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {deal.user_profiles?.name ?? "—"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-right font-mono">
                       {deal.value != null

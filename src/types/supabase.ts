@@ -20,20 +20,63 @@ export type Database = {
           id: number
           name: string | null
           value: number | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: number
           name?: string | null
           value?: number | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: number
           name?: string | null
           value?: number | null
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sales_deals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      user_profiles: {
+        Row: {
+          id: string
+          name: string
+          account_type: Database["public"]["Enums"]["account_type"]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          name: string
+          account_type?: Database["public"]["Enums"]["account_type"]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          account_type?: Database["public"]["Enums"]["account_type"]
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {
@@ -43,7 +86,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      account_type: "admin" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -170,6 +213,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      account_type: ["admin", "member"] as const,
+    },
   },
 } as const
+
+// Helper types for user profiles
+export type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"]
+export type UserProfileInsert = Database["public"]["Tables"]["user_profiles"]["Insert"]
+export type UserProfileUpdate = Database["public"]["Tables"]["user_profiles"]["Update"]
+export type AccountType = Database["public"]["Enums"]["account_type"]

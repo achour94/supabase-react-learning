@@ -47,3 +47,37 @@ export async function getTotalSalesValueByName(): Promise<{
 
   return { data: typedData, error: null };
 }
+
+export type CreateSalesDealInput = {
+  name: string;
+  value: number;
+};
+
+export async function createSalesDeal(input: CreateSalesDealInput): Promise<{
+  data: SalesDeal | null;
+  error: string | null;
+}> {
+  // Validation côté client
+  if (!input.name?.trim()) {
+    return { data: null, error: "Le nom du deal est requis" };
+  }
+
+  if (input.value <= 0) {
+    return { data: null, error: "La valeur doit être supérieure à 0" };
+  }
+
+  const { data, error } = await supabase
+    .from("sales_deals")
+    .insert({
+      name: input.name.trim(),
+      value: input.value,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data, error: null };
+}

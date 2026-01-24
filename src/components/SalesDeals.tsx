@@ -5,19 +5,20 @@ import {
   getTotalSalesValueByName,
   type SalesDealResult,
 } from "../api/api";
+import { Dialog } from "./Dialog";
+import { AddDealForm } from "./AddDealForm";
 
 export function SalesDeals() {
   const [deals, setDeals] = useState<SalesDealResult[]>([]);
   const [metrics, setMetrics] = useState<
     { name: string | null; total_value: number }[]
   >([]);
-  // On ajoute un état pour savoir si une synchro est en cours (pour l'UX, optionnel)
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  // 1. Définition stable de la fonction de chargement (useCallback)
-  // Cette fonction est notre SEULE façon de mettre à jour l'état.
+  // Fonction de chargement des données (stable avec useCallback)
   const fetchLatestData = useCallback(async (isBackgroundRefresh = false) => {
     if (!isBackgroundRefresh) setLoading(true);
     else setIsSyncing(true);
@@ -47,30 +48,27 @@ export function SalesDeals() {
     }
   }, []);
 
-  // 2. Chargement initial
+  // Chargement initial
   useEffect(() => {
     fetchLatestData();
   }, [fetchLatestData]);
 
-  // 3. Abonnement Realtime "Signal"
+  // Abonnement Realtime "Signal"
   useEffect(() => {
     const channel = supabase
       .channel("sales-dashboard-sync")
       .on(
         "postgres_changes",
         {
-          event: "*", // On écoute TOUT : INSERT, UPDATE, DELETE
+          event: "*",
           schema: "public",
           table: "sales_deals",
         },
         () => {
-          // LE COEUR DU PATTERN :
-          // On ignore le payload (ce qui a changé).
-          // On utilise l'événement comme un simple "Signal" pour recharger la Source de Vérité.
           console.log(
             "⚡ Signal Realtime reçu : Invalidation et rechargement des données...",
           );
-          fetchLatestData(true); // true = refresh silencieux (pas de spinner global)
+          fetchLatestData(true);
         },
       )
       .subscribe();
@@ -78,6 +76,14 @@ export function SalesDeals() {
     return () => {
       supabase.removeChannel(channel);
     };
+  }, [fetchLatestData]);
+
+  // Gestion du succès de l'ajout
+  const handleAddSuccess = useCallback(() => {
+    setIsAddDialogOpen(false);
+    // Les données seront automatiquement rafraîchies via Realtime
+    // Mais on peut aussi forcer un refresh immédiat pour une meilleure UX
+    fetchLatestData(true);
   }, [fetchLatestData]);
 
   if (loading && !isSyncing && deals.length === 0) {
@@ -107,25 +113,48 @@ export function SalesDeals() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-8">
-      {/* Header avec indicateur de statut */}
-      <div className="flex justify-between items-end">
-        <h2 className="text-2xl font-bold text-gray-800">Tableau de Bord</h2>
-        <div className="text-sm">
-          {isSyncing ? (
-            <span className="text-blue-600 flex items-center gap-2">
-              <span className="animate-spin h-3 w-3 border-2 border-blue-600 border-t-transparent rounded-full"></span>
-              Mise à jour...
-            </span>
-          ) : (
-            <span className="text-green-600 flex items-center gap-2">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+      {/* Header avec bouton Add et indicateur de statut */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-end gap-4">
+          <h2 className="text-2xl font-bold text-gray-800">Tableau de Bord</h2>
+          <div className="text-sm pb-1">
+            {isSyncing ? (
+              <span className="text-blue-600 flex items-center gap-2">
+                <span className="animate-spin h-3 w-3 border-2 border-blue-600 border-t-transparent rounded-full"></span>
+                Mise à jour...
               </span>
-              En direct
-            </span>
-          )}
+            ) : (
+              <span className="text-green-600 flex items-center gap-2">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+                En direct
+              </span>
+            )}
+          </div>
         </div>
+
+        {/* Bouton Add */}
+        <button
+          onClick={() => setIsAddDialogOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition shadow-sm"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          Ajouter un deal
+        </button>
       </div>
 
       {/* Metrics View */}
@@ -199,6 +228,18 @@ export function SalesDeals() {
           )}
         </div>
       </section>
+
+      {/* Dialog d'ajout */}
+      <Dialog
+        isOpen={isAddDialogOpen}
+        onClose={() => setIsAddDialogOpen(false)}
+        title="Ajouter un nouveau deal"
+      >
+        <AddDealForm
+          onSuccess={handleAddSuccess}
+          onCancel={() => setIsAddDialogOpen(false)}
+        />
+      </Dialog>
     </div>
   );
 }

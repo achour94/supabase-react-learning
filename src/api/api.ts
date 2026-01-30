@@ -3,7 +3,14 @@ import type { Database } from "../types/supabase";
 
 type SalesDeal = Database["public"]["Tables"]["sales_deals"]["Row"];
 
-export type SalesDealResult = Pick<SalesDeal, "name" | "value">;
+export type SalesDealResult = Pick<SalesDeal, "name" | "value" | "user_id">;
+
+// Extended result type that includes user profile information
+export type SalesDealWithUser = SalesDealResult & {
+  user_profiles: {
+    name: string;
+  } | null;
+};
 
 // Define the shape of the metrics result explicitly
 type MetricsResult = {
@@ -12,12 +19,38 @@ type MetricsResult = {
 };
 
 export async function getSalesDeals(): Promise<{
-  data: SalesDealResult[] | null;
+  data: SalesDealWithUser[] | null;
   error: string | null;
 }> {
   const { data, error } = await supabase
     .from("sales_deals")
-    .select("name, value")
+    .select("name, value, user_id, user_profiles(name)")
+    .order("value", { ascending: false });
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data: data as SalesDealWithUser[], error: null };
+}
+
+/**
+ * Get sales deals for the current authenticated user only.
+ */
+export async function getCurrentUserSalesDeals(): Promise<{
+  data: SalesDealResult[] | null;
+  error: string | null;
+}> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { data: null, error: "User not authenticated" };
+  }
+
+  const { data, error } = await supabase
+    .from("sales_deals")
+    .select("name, value, user_id")
+    .eq("user_id", user.id)
     .order("value", { ascending: false });
 
   if (error) {
@@ -53,11 +86,21 @@ export type CreateSalesDealInput = {
   value: number;
 };
 
+/**
+ * Creates a new sales deal and automatically associates it with the current user.
+ */
 export async function createSalesDeal(input: CreateSalesDealInput): Promise<{
   data: SalesDeal | null;
   error: string | null;
 }> {
-  // Validation côté client
+  // Get the current user
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { data: null, error: "User not authenticated" };
+  }
+
+  // Client-side validation
   if (!input.name?.trim()) {
     return { data: null, error: "Le nom du deal est requis" };
   }
@@ -71,6 +114,7 @@ export async function createSalesDeal(input: CreateSalesDealInput): Promise<{
     .insert({
       name: input.name.trim(),
       value: input.value,
+      user_id: user.id,
     })
     .select()
     .single();

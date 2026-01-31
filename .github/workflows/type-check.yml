@@ -20,7 +20,8 @@ on:
 
 env:
   NODE_VERSION: '20'
-  SUPABASE_VERSION: '1.200.3'
+  # Use latest CLI to match config.toml format generated locally
+  SUPABASE_VERSION: 'latest'
 
 jobs:
   type-check:

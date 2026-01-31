@@ -1,5 +1,11 @@
 import { supabase } from "../supabase-client";
-import type { UserProfile } from "../types/supabase";
+import type { Database } from "../types/supabase";
+
+export type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"]
+export type UserProfileInsert = Database["public"]["Tables"]["user_profiles"]["Insert"]
+export type UserProfileUpdate = Database["public"]["Tables"]["user_profiles"]["Update"]
+export type AccountType = Database["public"]["Enums"]["account_type"]
+
 
 /**
  * Fetches the current user's profile from the database.

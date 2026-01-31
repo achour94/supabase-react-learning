@@ -19,22 +19,22 @@ export type Database = {
           created_at: string
           id: number
           name: string | null
-          value: number | null
           user_id: string | null
+          value: number | null
         }
         Insert: {
           created_at?: string
           id?: number
           name?: string | null
-          value?: number | null
           user_id?: string | null
+          value?: number | null
         }
         Update: {
           created_at?: string
           id?: number
           name?: string | null
-          value?: number | null
           user_id?: string | null
+          value?: number | null
         }
         Relationships: [
           {
@@ -43,47 +43,42 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       user_profiles: {
         Row: {
-          id: string
-          name: string
           account_type: Database["public"]["Enums"]["account_type"]
           created_at: string
+          id: string
+          name: string
           updated_at: string
         }
         Insert: {
-          id: string
-          name: string
           account_type?: Database["public"]["Enums"]["account_type"]
           created_at?: string
+          id: string
+          name: string
           updated_at?: string
         }
         Update: {
-          id?: string
-          name?: string
           account_type?: Database["public"]["Enums"]["account_type"]
           created_at?: string
+          id?: string
+          name?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_profiles_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_user_account_type: {
+        Args: never
+        Returns: Database["public"]["Enums"]["account_type"]
+      }
     }
     Enums: {
       account_type: "admin" | "member"
@@ -214,13 +209,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      account_type: ["admin", "member"] as const,
+      account_type: ["admin", "member"],
     },
   },
 } as const
-
-// Helper types for user profiles
-export type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"]
-export type UserProfileInsert = Database["public"]["Tables"]["user_profiles"]["Insert"]
-export type UserProfileUpdate = Database["public"]["Tables"]["user_profiles"]["Update"]
-export type AccountType = Database["public"]["Enums"]["account_type"]

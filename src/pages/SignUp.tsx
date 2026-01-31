@@ -72,10 +72,10 @@ export function SignUp() {
               </svg>
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Account Created!
+              Account Created Successfully!
             </h2>
             <p className="text-gray-600 mb-4">
-              Please check your email to confirm your account.
+              Your account has been created and you're now signed in.
             </p>
             <p className="text-sm text-gray-500">
               Redirecting to dashboard...

@@ -53,20 +53,24 @@ jobs:
           version: ${{ env.SUPABASE_VERSION }}
 
       # =======================================================================
-      # Type Generation & Validation
+      # Type Generation & Validation (Optional - requires secrets)
       # =======================================================================
-      - name: Create types directory if needed
-        run: mkdir -p src/types
+      # This step validates that committed types match the remote DB schema.
+      # Requires SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_ID secrets.
+      # If secrets are not configured, this step is skipped.
 
-      - name: Generate Supabase types
+      - name: Generate Supabase types from remote
+        id: gen-types
+        if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' && secrets.SUPABASE_PROJECT_ID != '' }}
         run: |
-          supabase gen types typescript --local > src/types/supabase.generated.ts
+          mkdir -p src/types
+          supabase gen types typescript --project-id "$SUPABASE_PROJECT_ID" > src/types/supabase.generated.ts
         env:
-          # Uses local Supabase configuration (supabase/config.toml)
-          # For linked project types, use: supabase gen types typescript --linked
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
 
       - name: Compare generated types with committed version
+        if: ${{ steps.gen-types.outcome == 'success' }}
         run: |
           echo "Comparing generated types with committed version..."
 
@@ -96,8 +100,14 @@ jobs:
           echo "Types are in sync with the database schema."
 
       - name: Cleanup generated file
-        if: always()
+        if: ${{ steps.gen-types.outcome == 'success' }}
         run: rm -f src/types/supabase.generated.ts
+
+      - name: Skip type validation notice
+        if: ${{ secrets.SUPABASE_ACCESS_TOKEN == '' || secrets.SUPABASE_PROJECT_ID == '' }}
+        run: |
+          echo "::notice::Skipping Supabase type validation - secrets not configured."
+          echo "To enable, add SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_ID to repository secrets."
 
       # =======================================================================
       # TypeScript Type Check

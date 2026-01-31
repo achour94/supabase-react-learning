@@ -6,6 +6,11 @@
   command = "npm run build"
   publish = "dist"
 
+# Exclude Supabase public keys from secrets scanning
+# These are MEANT to be public (anon/publishable keys) and will appear in client-side JS
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY"
+
 # =============================================================================
 # Production Context (main branch)
 # =============================================================================

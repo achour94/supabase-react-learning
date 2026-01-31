@@ -1,0 +1,73 @@
+# Netlify Configuration
+# =============================================================================
+
+# Global build settings (inherited by all contexts unless overridden)
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# =============================================================================
+# Production Context (main branch)
+# =============================================================================
+[context.production]
+  command = "npm run build"
+  publish = "dist"
+
+# Environment variables for production are configured in Netlify UI:
+# - VITE_SUPABASE_URL
+# - VITE_SUPABASE_PUBLISHABLE_KEY
+
+# =============================================================================
+# Preview Context (preview branch - persistent Supabase branch)
+# =============================================================================
+[context.preview]
+  command = "npm run build"
+  publish = "dist"
+
+# Environment variables for preview branch are configured in Netlify UI:
+# - VITE_SUPABASE_URL (points to Supabase preview branch)
+# - VITE_SUPABASE_PUBLISHABLE_KEY (preview branch anon key)
+
+# =============================================================================
+# Branch Deploy Context (all other branches)
+# Inherits from global [build] settings
+# =============================================================================
+[context.branch-deploy]
+  command = "npm run build"
+  publish = "dist"
+
+# =============================================================================
+# Deploy Preview Context (Pull Request previews)
+# =============================================================================
+[context.deploy-preview]
+  command = "npm run build"
+  publish = "dist"
+
+# =============================================================================
+# Redirects & Rewrites
+# =============================================================================
+
+# SPA Routing: Redirect all requests to index.html for React Router
+# Status 200 means it's a rewrite (not a redirect), preserving the URL
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# =============================================================================
+# Headers (Security & Caching)
+# =============================================================================
+
+# Security headers for all routes
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache static assets aggressively
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

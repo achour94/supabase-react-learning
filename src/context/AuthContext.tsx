@@ -2,8 +2,7 @@ import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react'
 import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '../supabase-client';
 import { AuthContext, type AuthState, type SignUpData } from './auth-context';
-import { getCurrentUserProfile, createUserProfile } from '../api/user-profile';
-import type { UserProfile } from '../types/supabase';
+import { getCurrentUserProfile, createUserProfile, type UserProfile } from '../api/user-profile';
 
 interface AuthProviderProps {
   children: ReactNode;

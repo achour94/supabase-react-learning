@@ -1,6 +1,6 @@
 import { createContext } from 'react';
 import type { User, Session, AuthError } from '@supabase/supabase-js';
-import type { UserProfile } from '../types/supabase';
+import type { UserProfile } from '../api/user-profile';
 
 export interface AuthState {
   user: User | null;

@@ -1,0 +1,122 @@
+# Type Check & Schema Validation Workflow
+# =============================================================================
+# This workflow ensures the frontend TypeScript types are always in sync
+# with the Supabase database schema.
+#
+# Triggers: Pushes to main and preview branches
+# =============================================================================
+
+name: Type Check & Schema Validation
+
+on:
+  push:
+    branches:
+      - main
+      - preview
+  pull_request:
+    branches:
+      - main
+      - preview
+
+env:
+  NODE_VERSION: '20'
+  SUPABASE_VERSION: '1.200.3'
+
+jobs:
+  type-check:
+    name: TypeScript & Schema Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      # =======================================================================
+      # Setup
+      # =======================================================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # =======================================================================
+      # Supabase CLI Installation
+      # =======================================================================
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_VERSION }}
+
+      # =======================================================================
+      # Type Generation & Validation
+      # =======================================================================
+      - name: Create types directory if needed
+        run: mkdir -p src/types
+
+      - name: Generate Supabase types
+        run: |
+          supabase gen types typescript --local > src/types/supabase.generated.ts
+        env:
+          # Uses local Supabase configuration (supabase/config.toml)
+          # For linked project types, use: supabase gen types typescript --linked
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Compare generated types with committed version
+        run: |
+          echo "Comparing generated types with committed version..."
+
+          # Check if the committed file exists
+          if [ ! -f "src/types/supabase.ts" ]; then
+            echo "::error::src/types/supabase.ts does not exist!"
+            echo "Please generate and commit the Supabase types file."
+            exit 1
+          fi
+
+          # Compare the files (ignoring the generated timestamp if any)
+          if ! diff -q src/types/supabase.ts src/types/supabase.generated.ts > /dev/null 2>&1; then
+            echo "::error::Generated types do not match committed version!"
+            echo ""
+            echo "The database schema has changed but src/types/supabase.ts was not updated."
+            echo ""
+            echo "To fix this:"
+            echo "  1. Run: npm run gen-types"
+            echo "  2. Review the changes"
+            echo "  3. Commit the updated src/types/supabase.ts"
+            echo ""
+            echo "Differences:"
+            diff src/types/supabase.ts src/types/supabase.generated.ts || true
+            exit 1
+          fi
+
+          echo "Types are in sync with the database schema."
+
+      - name: Cleanup generated file
+        if: always()
+        run: rm -f src/types/supabase.generated.ts
+
+      # =======================================================================
+      # TypeScript Type Check
+      # =======================================================================
+      - name: Run TypeScript type check
+        run: npx tsc --noEmit
+
+      # =======================================================================
+      # Lint Check
+      # =======================================================================
+      - name: Run ESLint
+        run: npm run lint
+
+      # =======================================================================
+      # Build Verification
+      # =======================================================================
+      - name: Verify build succeeds
+        run: npm run build
+        env:
+          # These are placeholder values for build verification only
+          # Actual values are configured in Netlify for each environment
+          VITE_SUPABASE_URL: "https://placeholder.supabase.co"
+          VITE_SUPABASE_PUBLISHABLE_KEY: "placeholder-key"

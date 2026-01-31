@@ -1,54 +1,93 @@
 # Supabase Configuration
+# Generated with: supabase init
 # See: https://supabase.com/docs/guides/cli/config
+#
+# IMPORTANT: This config is for LOCAL DEVELOPMENT (supabase start).
+# For production/preview auth settings, configure in Supabase Dashboard:
+#   - Authentication → URL Configuration → Site URL
+#   - Authentication → URL Configuration → Redirect URLs
+#
+# Dashboard settings for your project:
+#   Site URL: https://supabase-learning.netlify.app
+#   Redirect URLs:
+#     - http://localhost:5173/**
+#     - https://**--supabase-learning.netlify.app/**
 
-[project]
-id = ""  # Your project ID - set via SUPABASE_PROJECT_ID env var
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
 
-# Remote branch mapping for Supabase Branching
-# Maps git branches to Supabase persistent branches
-[remotes.preview]
-project_id = ""  # Set via SUPABASE_PROJECT_ID env var in CI/CD
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
 
 # =============================================================================
-# Auth Configuration
+# Auth Configuration (LOCAL DEV ONLY)
 # =============================================================================
 [auth]
-# The base URL of your website - used for password reset emails, magic links, etc.
-site_url = "https://supabase-learning.netlify.app"
-
-# Additional redirect URLs allowed for OAuth and magic link callbacks
-# Supports wildcards for dynamic Netlify deploy previews
+enabled = true
+site_url = "http://127.0.0.1:5173"
 additional_redirect_urls = [
-  # Local development
-  "http://localhost:5173/**",
-  # Netlify deploy previews (all branches including preview)
-  "https://**--supabase-learning.netlify.app/**"
+  "http://127.0.0.1:5173/**",
+  "http://localhost:5173/**"
 ]
-
-# Enable signup for new users
+jwt_expiry = 3600
 enable_signup = true
-
-# Minimum password length for new users
+enable_anonymous_sign_ins = false
 min_password_length = 8
 
-# =============================================================================
-# Email Auth Settings
-# =============================================================================
 [auth.email]
-# Allow users to sign in with email/password
 enable_signup = true
-
-# Require email confirmation before allowing sign-in
 double_confirm_changes = true
+enable_confirmations = false  # Disabled for local dev convenience
 
-# Enable confirmation on signup
-enable_confirmations = true
+[auth.sms]
+enable_signup = false
+enable_confirmations = false
 
 # =============================================================================
-# External OAuth Providers (disabled by default - enable as needed)
+# External OAuth Providers (configure in Dashboard for production)
 # =============================================================================
 [auth.external.google]
 enabled = false
 
 [auth.external.github]
 enabled = false
+
+# =============================================================================
+# Remote Branch Mapping (Supabase Branching)
+# =============================================================================
+# Link your project first: supabase link --project-ref <your-ref>
+# Then the project_id will be populated automatically
+#
+# For preview branch, after creating persistent branch in Supabase:
+# [remotes.preview]
+# project_id = "your-preview-branch-ref"
+
+# =============================================================================
+# Realtime
+# =============================================================================
+[realtime]
+enabled = true
+
+# =============================================================================
+# Storage
+# =============================================================================
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+# =============================================================================
+# Edge Functions
+# =============================================================================
+[functions]
+enabled = true
